@@ -37,6 +37,18 @@
                 </div>
 
                 <div class="section">
+                    <h3>Configuración</h3>
+                    <div class="think-mode-section">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="thinkMode" class="checkbox-input" checked>
+                            <span class="checkbox-custom"></span>
+                            <span class="checkbox-text">Think Mode</span>
+                        </label>
+                        <p class="think-mode-description">Cuando está desactivado, se agrega /no_think automáticamente</p>
+                    </div>
+                </div>
+
+                <div class="section">
                     <h3>System Prompt</h3>
                     <textarea id="systemPrompt" placeholder="Eres un asistente especializado en procesar archivos JSON grandes y extraer datos específicos..." class="textarea-input"></textarea>
                 </div>
@@ -61,21 +73,34 @@
                         <p>3. Configura el system prompt (opcional)</p>
                         <p>4. Carga tu archivo JSON</p>
                         <p>5. Escribe tu consulta abajo</p>
+                        <p><strong>Tip:</strong> Usa Enter para enviar, Think Mode controla el razonamiento del modelo</p>
                     </div>
                 </div>
 
                 <div class="input-area">
+                    <div class="processing-indicator" id="processingIndicator">
+                        <div class="processing-content">
+                            <div class="processing-spinner"></div>
+                            <span class="processing-text" id="processingText">Generando respuesta...</span>
+                            <button class="btn btn-danger btn-sm stop-btn" id="stopGeneration">Stop</button>
+                        </div>
+                    </div>
+                    
                     <div class="message-input-container">
-                        <textarea id="messageInput" placeholder="Escribe tu consulta sobre el archivo JSON..." class="message-input"></textarea>
-                        <button id="sendMessage" class="btn btn-primary send-btn">Enviar</button>
+                        <textarea id="messageInput" placeholder="Escribe tu consulta... (Enter para enviar)" class="message-input"></textarea>
+                        <button id="sendMessage" class="btn btn-primary send-btn">
+                            <span class="btn-text">Enviar</span>
+                            <span class="btn-shortcut">⏎</span>
+                        </button>
                     </div>
                 </div>
             </div>
         </main>
 
+        <!-- Loading overlay now only for app initialization -->
         <div class="loading-overlay" id="loadingOverlay">
             <div class="loading-spinner"></div>
-            <p>Procesando...</p>
+            <p>Inicializando aplicación...</p>
         </div>
     </div>
 

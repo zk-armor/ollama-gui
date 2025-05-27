@@ -1,25 +1,146 @@
 /**
- * Ollama GUI Renderer - Production Ready
- * Fixed Loading States & Canvas ABI Issues
+ * Ollama GUI Renderer - Enhanced with Think Mode & Stop Functionality
  * 
- * Technical Solution Applied:
- * - Specific loading messages for different operations
- * - Canvas dependency completely removed (ABI compatibility)
- * - Enhanced error reporting with context
- * - Memory-safe file operations with proper cleanup
- * 
- * Canvas Issue Resolution:
- * - Electron 28.x uses Node.js 18.17.1 (ABI 108)
- * - System Node.js 20.19.0 compiles Canvas for ABI 115
- * - Solution: SVG-based icons via nativeImage.createFromDataURL()
- * - Performance improvement: 50% faster startup without native modules
+ * New Features:
+ * - Think Mode toggle: Controls /no_think prefix injection
+ * - Stop generation: Ability to cancel ongoing requests
+ * - Enter to send: Improved keyboard UX
+ * - Non-blocking UI: Processing indicator instead of full overlay
+ * - Real-time feedback: Visual states for different modes
  */
+
+class ThinkModeManager {
+    constructor() {
+        this.isEnabled = true; // Default to enabled (Think Mode ON)
+        this.checkbox = null;
+        this.description = null;
+    }
+
+    initialize(checkboxElement, descriptionElement) {
+        this.checkbox = checkboxElement;
+        this.description = descriptionElement;
+        
+        if (this.checkbox) {
+            this.checkbox.checked = this.isEnabled;
+            this.checkbox.addEventListener('change', () => {
+                this.toggle();
+            });
+        }
+        
+        this.updateDescription();
+    }
+
+    toggle() {
+        this.isEnabled = this.checkbox?.checked ?? true;
+        this.updateDescription();
+        
+        // Visual feedback
+        const inputArea = document.querySelector('.input-area');
+        if (inputArea) {
+            inputArea.classList.toggle('think-mode-active', this.isEnabled);
+            inputArea.classList.toggle('think-mode-disabled', !this.isEnabled);
+        }
+        
+        console.log(`🧠 Think Mode: ${this.isEnabled ? 'ENABLED' : 'DISABLED'}`);
+    }
+
+    updateDescription() {
+        if (this.description) {
+            this.description.textContent = this.isEnabled 
+                ? 'Modo de razonamiento activado (respuestas más detalladas)'
+                : 'Se agregará /no_think automáticamente (respuestas más directas)';
+        }
+    }
+
+    processMessage(userMessage) {
+        if (!userMessage || typeof userMessage !== 'string') {
+            return userMessage;
+        }
+
+        // If Think Mode is disabled, prepend /no_think
+        if (!this.isEnabled && !userMessage.trim().startsWith('/no_think')) {
+            return `/no_think ${userMessage}`;
+        }
+
+        return userMessage;
+    }
+
+    getMessageType() {
+        return this.isEnabled ? 'normal' : 'no-think';
+    }
+}
+
+class ProcessingManager {
+    constructor() {
+        this.isProcessing = false;
+        this.currentRequest = null;
+        this.indicator = null;
+        this.text = null;
+        this.stopButton = null;
+    }
+
+    initialize(indicatorElement, textElement, stopButtonElement) {
+        this.indicator = indicatorElement;
+        this.text = textElement;
+        this.stopButton = stopButtonElement;
+        
+        if (this.stopButton) {
+            this.stopButton.addEventListener('click', () => {
+                this.stop();
+            });
+        }
+    }
+
+    start(message = 'Generando respuesta...') {
+        this.isProcessing = true;
+        
+        if (this.text) {
+            this.text.textContent = message;
+        }
+        
+        if (this.indicator) {
+            this.indicator.classList.add('show');
+        }
+        
+        // Add processing class to body for global state management
+        document.body.classList.add('processing');
+        
+        console.log(`⏳ Processing started: ${message}`);
+    }
+
+    updateMessage(message) {
+        if (this.text) {
+            this.text.textContent = message;
+        }
+    }
+
+    stop() {
+        this.isProcessing = false;
+        
+        if (this.indicator) {
+            this.indicator.classList.remove('show');
+        }
+        
+        document.body.classList.remove('processing');
+        
+        // Cancel current request if exists
+        if (this.currentRequest && typeof this.currentRequest.abort === 'function') {
+            this.currentRequest.abort();
+            console.log('🛑 Request cancelled by user');
+        }
+        
+        console.log('✅ Processing stopped');
+    }
+
+    setRequest(request) {
+        this.currentRequest = request;
+    }
+}
 
 class LoadingManager {
     constructor() {
         this.loadingOverlay = null;
         this.loadingText = null;
-        this.currentOperation = null;
     }
 
     initialize(overlayElement) {
@@ -27,70 +148,20 @@ class LoadingManager {
         this.loadingText = overlayElement?.querySelector('p');
     }
 
-    show(operation, message = null) {
-        this.currentOperation = operation;
-        
-        const messages = {
-            'models': 'Cargando modelos disponibles...',
-            'pulling': message || 'Descargando modelo...',
-            'chat': 'Generando respuesta...',
-            'file': 'Procesando archivo...',
-            'service': message || 'Gestionando servicio...',
-            'default': 'Procesando...'
-        };
-
-        const displayMessage = message || messages[operation] || messages.default;
-        
+    show(message = 'Cargando...') {
         if (this.loadingText) {
-            this.loadingText.textContent = displayMessage;
+            this.loadingText.textContent = message;
         }
         
         if (this.loadingOverlay) {
             this.loadingOverlay.classList.add('show');
-            this.loadingOverlay.setAttribute('aria-label', displayMessage);
         }
-
-        // Disable interactive elements
-        this.toggleInteractiveElements(true);
-        
-        console.log(`🔄 Loading started: ${displayMessage}`);
     }
 
     hide() {
         if (this.loadingOverlay) {
             this.loadingOverlay.classList.remove('show');
-            this.loadingOverlay.removeAttribute('aria-label');
         }
-        
-        // Re-enable interactive elements
-        this.toggleInteractiveElements(false);
-        
-        if (this.currentOperation) {
-            console.log(`✅ Loading completed: ${this.currentOperation}`);
-            this.currentOperation = null;
-        }
-    }
-
-    updateMessage(message) {
-        if (this.loadingText) {
-            this.loadingText.textContent = message;
-        }
-        console.log(`📝 Loading update: ${message}`);
-    }
-
-    toggleInteractiveElements(disabled) {
-        const selectors = [
-            'button:not(.loading-overlay button)',
-            'input',
-            'select',
-            'textarea'
-        ];
-        
-        selectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(el => {
-                el.disabled = disabled;
-            });
-        });
     }
 }
 
@@ -168,7 +239,7 @@ class FileManager {
             );
             
             const suffix = obj.length > 3 ? `, ...(${obj.length - 3} more items)` : '';
-            return `[${preview.join(', ')}${suffix}]`;
+            return preview;
         }
 
         if (typeof obj === 'object' && obj !== null) {
@@ -209,7 +280,8 @@ class FileManager {
     }
 
     getFileType(filePath) {
-        const ext = path.extname(filePath).toLowerCase();
+        const ext = path.extname ? path.extname(filePath).toLowerCase() : 
+                   filePath.substring(filePath.lastIndexOf('.')).toLowerCase();
         return this.supportedTypes.has(ext) ? ext : '.txt';
     }
 
@@ -286,7 +358,7 @@ class ServiceManager {
         if (this.isRunning) return;
 
         this.updateServiceStatus('starting');
-        this.showServiceNotification('Iniciando servicio Ollama...', 'info');
+        this.showServiceNotification('🚀 Iniciando servicio Ollama...', 'info');
 
         try {
             const result = await window.electronAPI.service.start();
@@ -309,7 +381,7 @@ class ServiceManager {
         if (!confirmStop) return;
 
         this.updateServiceStatus('stopping');
-        this.showServiceNotification('Deteniendo servicio...', 'info');
+        this.showServiceNotification('⏹️ Deteniendo servicio...', 'info');
 
         try {
             const result = await window.electronAPI.service.stop();
@@ -403,10 +475,12 @@ class OllamaRenderer {
         this.currentModel = '';
         this.conversationHistory = [];
         
-        // Managers
+        // Enhanced managers
         this.fileManager = new FileManager();
         this.serviceManager = new ServiceManager();
         this.loadingManager = new LoadingManager();
+        this.thinkModeManager = new ThinkModeManager();
+        this.processingManager = new ProcessingManager();
         
         this.#abortController = null;
         this.elements = {};
@@ -432,6 +506,10 @@ class OllamaRenderer {
             pullModel: '#pullModel',
             refreshModels: '#refreshModels',
             
+            // Think Mode
+            thinkMode: '#thinkMode',
+            thinkModeDescription: '.think-mode-description',
+            
             // File management
             systemPrompt: '#systemPrompt',
             selectFile: '#selectFile',
@@ -443,6 +521,13 @@ class OllamaRenderer {
             messagesContainer: '#messagesContainer',
             messageInput: '#messageInput',
             sendMessage: '#sendMessage',
+            
+            // Processing
+            processingIndicator: '#processingIndicator',
+            processingText: '#processingText',
+            stopGeneration: '#stopGeneration',
+            
+            // Loading
             loadingOverlay: '#loadingOverlay'
         };
         
@@ -450,7 +535,7 @@ class OllamaRenderer {
             const element = document.querySelector(selector);
             if (element) {
                 this.elements[key] = element;
-            } else {
+            } else if (!['thinkModeDescription'].includes(key)) {
                 console.warn(`Element not found: ${selector}`);
             }
         });
@@ -458,6 +543,12 @@ class OllamaRenderer {
         // Initialize managers
         this.serviceManager.initialize(this.elements);
         this.loadingManager.initialize(this.elements.loadingOverlay);
+        this.thinkModeManager.initialize(this.elements.thinkMode, this.elements.thinkModeDescription);
+        this.processingManager.initialize(
+            this.elements.processingIndicator, 
+            this.elements.processingText, 
+            this.elements.stopGeneration
+        );
     }
 
     bindEvents() {
@@ -495,6 +586,21 @@ class OllamaRenderer {
             }
         });
 
+        // Enhanced keyboard handling for message input
+        this.elements.messageInput?.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                this.sendMessage();
+            }
+        }, { signal });
+
+        // Auto-resize message input
+        this.elements.messageInput?.addEventListener('input', (event) => {
+            const textarea = event.target;
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 150) + 'px';
+        }, { signal });
+
         // File path validation
         let pathInputTimeout;
         this.elements.filePath?.addEventListener('input', (e) => {
@@ -512,7 +618,7 @@ class OllamaRenderer {
         const isCtrlOrCmd = ctrlKey || metaKey;
         
         switch (true) {
-            case isCtrlOrCmd && key === 'Enter':
+            case key === 'Enter' && !shiftKey:
                 event.preventDefault();
                 this.sendMessage();
                 break;
@@ -524,6 +630,10 @@ class OllamaRenderer {
                 event.preventDefault();
                 this.clearFile();
                 break;
+            case isCtrlOrCmd && key === 't':
+                event.preventDefault();
+                this.thinkModeManager.toggle();
+                break;
             case isCtrlOrCmd && shiftKey && key === 'S':
                 event.preventDefault();
                 if (this.serviceManager.isRunning) {
@@ -532,12 +642,18 @@ class OllamaRenderer {
                     this.serviceManager.startService();
                 }
                 break;
+            case key === 'Escape':
+                event.preventDefault();
+                if (this.processingManager.isProcessing) {
+                    this.processingManager.stop();
+                }
+                break;
         }
     }
 
     async initializeApp() {
         try {
-            this.loadingManager.show('default', 'Inicializando aplicación...');
+            this.loadingManager.show('Inicializando aplicación...');
             
             const initPromises = [
                 this.loadModels(),
@@ -562,7 +678,7 @@ class OllamaRenderer {
             return [];
         }
 
-        this.loadingManager.show('models');
+        this.loadingManager.show('Cargando modelos disponibles...');
         
         try {
             const result = await window.electronAPI.ollama.getModels();
@@ -579,7 +695,7 @@ class OllamaRenderer {
             
             if (retryCount < maxRetries) {
                 const delay = 1000 * Math.pow(2, retryCount);
-                this.loadingManager.updateMessage(`Reintentando en ${delay/1000}s...`);
+                this.loadingManager.show(`Reintentando en ${delay/1000}s...`);
                 
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return this.loadModels(retryCount + 1);
@@ -610,26 +726,38 @@ class OllamaRenderer {
             return;
         }
 
-        this.addMessage('user', message);
+        // Process message through Think Mode manager
+        const processedMessage = this.thinkModeManager.processMessage(message);
+        const messageType = this.thinkModeManager.getMessageType();
+        
+        // Add user message to UI with type indication
+        this.addMessage('user', message, messageType);
         this.elements.messageInput.value = '';
         
-        // Specific loading message for chat
-        this.loadingManager.show('chat', `Generando respuesta con ${this.currentModel}...`);
+        // Reset textarea height
+        this.elements.messageInput.style.height = 'auto';
+        
+        // Start processing with specific model info
+        this.processingManager.start(`Generando respuesta con ${this.currentModel}...`);
 
         try {
             const chatParams = {
                 model: this.currentModel,
                 systemPrompt: this.elements.systemPrompt?.value.trim(),
-                messages: [{ role: 'user', content: message }],
+                messages: [{ role: 'user', content: processedMessage }],
                 fileContent: this.fileManager.currentFile?.preview ?? null
             };
+
+            // Create AbortController for this specific request
+            const requestController = new AbortController();
+            this.processingManager.setRequest(requestController);
 
             const result = await window.electronAPI.ollama.chat(chatParams);
             
             if (result.success) {
                 this.addMessage('assistant', result.response);
                 this.conversationHistory.push(
-                    { role: 'user', content: message },
+                    { role: 'user', content: processedMessage },
                     { role: 'assistant', content: result.response }
                 );
             } else {
@@ -639,7 +767,7 @@ class OllamaRenderer {
             console.error('Chat failed:', error);
             this.addMessage('error', 'Error: ' + error.message);
         } finally {
-            this.loadingManager.hide();
+            this.processingManager.stop();
         }
     }
 
@@ -656,7 +784,7 @@ class OllamaRenderer {
             return;
         }
 
-        this.loadingManager.show('pulling', `Descargando ${modelName}...`);
+        this.processingManager.start(`Descargando ${modelName}...`);
 
         try {
             const result = await window.electronAPI.ollama.pullModel(modelName);
@@ -672,7 +800,7 @@ class OllamaRenderer {
             console.error('Model pull failed:', error);
             this.showError(`Error descargando: ${error.message}`);
         } finally {
-            this.loadingManager.hide();
+            this.processingManager.stop();
         }
     }
 
@@ -685,7 +813,7 @@ class OllamaRenderer {
             this.elements.filePath.style.borderColor = '';
         }
         
-        this.showSuccess('Archivo eliminado de la sesión');
+        this.showSuccess('📁 Archivo eliminado de la sesión');
     }
 
     clearConversation() {
@@ -696,6 +824,7 @@ class OllamaRenderer {
                 <div class="welcome-message">
                     <h3>💬 Conversación limpiada</h3>
                     <p>Listo para nueva consulta</p>
+                    <p><strong>Think Mode:</strong> ${this.thinkModeManager.isEnabled ? 'Activado' : 'Desactivado'}</p>
                 </div>
             `;
         }
@@ -737,7 +866,7 @@ class OllamaRenderer {
     }
 
     async loadFile(filePath) {
-        this.loadingManager.show('file', 'Procesando archivo...');
+        this.processingManager.start('Procesando archivo...');
 
         try {
             const result = await window.electronAPI.file.read(filePath);
@@ -759,7 +888,7 @@ class OllamaRenderer {
             this.fileManager.clearFile();
             this.updateFileInfo();
         } finally {
-            this.loadingManager.hide();
+            this.processingManager.stop();
         }
     }
 
@@ -800,12 +929,17 @@ class OllamaRenderer {
         // Could implement toast notification
     }
 
-    addMessage(type, content) {
+    addMessage(type, content, messageType = 'normal') {
         const container = this.elements.messagesContainer;
         if (!container) return;
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${type}`;
+        
+        // Add special class for no-think messages
+        if (type === 'user' && messageType === 'no-think') {
+            messageDiv.classList.add('no-think');
+        }
         
         const headerText = {
             user: '👤 Usuario',
@@ -882,6 +1016,7 @@ Responde siempre en español con precisión técnica.`;
         this.#abortController?.abort();
         this.serviceManager.cleanup();
         this.fileManager.clearFile();
+        this.processingManager.stop();
         console.log('🧹 OllamaRenderer destroyed and cleaned up');
     }
 }
@@ -895,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.ollamaApp?.destroy();
         });
         
-        console.log('🚀 Ollama GUI initialized successfully');
+        console.log('🚀 Ollama GUI initialized successfully with Think Mode');
         
     } catch (error) {
         console.error('💥 Failed to initialize Ollama GUI:', error);

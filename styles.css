@@ -609,3 +609,263 @@ body {
         transition: none;
     }
 }
+
+/* Think Mode Section */
+.think-mode-section {
+    margin-bottom: 1rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.checkbox-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #666666;
+    border-radius: 3px;
+    background: #404040;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.checkbox-input:checked + .checkbox-custom {
+    background: #4CAF50;
+    border-color: #4CAF50;
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.checkbox-text {
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.think-mode-description {
+    font-size: 0.75rem;
+    color: #888888;
+    margin: 0;
+    padding-left: 1.5rem;
+    line-height: 1.3;
+}
+
+/* Processing Indicator */
+.processing-indicator {
+    background: #2d2d2d;
+    border: 1px solid #4CAF50;
+    border-radius: 4px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    display: none;
+    animation: pulseGreen 2s infinite;
+}
+
+.processing-indicator.show {
+    display: block;
+}
+
+.processing-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.processing-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #666666;
+    border-top: 2px solid #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.processing-text {
+    flex: 1;
+    color: #4CAF50;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.stop-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.75rem;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.stop-btn:hover {
+    background: #b91c1c;
+}
+
+@keyframes pulseGreen {
+    0%, 100% { 
+        border-color: #4CAF50; 
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    50% { 
+        border-color: #45a049; 
+        box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1);
+    }
+}
+
+/* Enhanced Send Button */
+.send-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.6rem 1rem;
+    min-width: 80px;
+}
+
+.btn-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.btn-shortcut {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    font-family: monospace;
+}
+
+/* Updated Loading Overlay - Only for app init */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 26, 26, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 2000;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.loading-overlay p {
+    color: #4CAF50;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+}
+
+/* Message Input Enhancements */
+.message-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+/* Checkbox Focus States */
+.checkbox-label:focus-within .checkbox-custom,
+.checkbox-input:focus + .checkbox-custom {
+    outline: 2px solid #4CAF50;
+    outline-offset: 2px;
+}
+
+/* Disabled States During Processing */
+.processing .message-input,
+.processing .send-btn,
+.processing .btn:not(.stop-btn) {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Think Mode Visual Feedback */
+.think-mode-active {
+    border-left: 3px solid #4CAF50;
+}
+
+.think-mode-disabled {
+    border-left: 3px solid #f59e0b;
+}
+
+/* Enhanced Message Styling */
+.message.user.no-think {
+    border-left-color: #f59e0b;
+}
+
+.message.user.no-think .message-header::after {
+    content: ' (No Think)';
+    font-size: 0.7rem;
+    color: #f59e0b;
+    font-weight: normal;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .think-mode-description {
+        padding-left: 0;
+        margin-top: 0.3rem;
+    }
+    
+    .processing-content {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .send-btn {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+}
+
+/* Animation for Think Mode Toggle */
+.checkbox-custom {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkbox-input:checked + .checkbox-custom {
+    transform: scale(1.1);
+}
+
+.checkbox-input:not(:checked) + .checkbox-custom {
+    transform: scale(1);
+}
+
+/* Processing State Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.processing-indicator.show {
+    animation: fadeInUp 0.3s ease-out;
+}
