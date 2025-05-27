@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama GUI - JSON Processor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Ollama GUI</h1>
+            <div class="service-controls">
+                <div class="service-status">
+                    <span class="status-indicator" id="serviceStatus">Desconocido</span>
+                    <span class="ram-usage" id="ramUsage">0 MB</span>
+                </div>
+                <div class="service-buttons">
+                    <button id="startService" class="btn btn-primary btn-sm">Iniciar</button>
+                    <button id="stopService" class="btn btn-secondary btn-sm">Detener</button>
+                    <button id="refreshModels" class="btn btn-secondary btn-sm">Actualizar Modelos</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="sidebar">
+                <div class="section">
+                    <h3>Modelo</h3>
+                    <select id="modelSelect" class="select-input">
+                        <option value="">Seleccionar modelo...</option>
+                    </select>
+                    <div class="model-actions">
+                        <input type="text" id="newModelName" placeholder="Nombre del modelo a descargar" class="text-input">
+                        <button id="pullModel" class="btn btn-primary">Descargar</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>System Prompt</h3>
+                    <textarea id="systemPrompt" placeholder="Eres un asistente especializado en procesar archivos JSON grandes y extraer datos específicos..." class="textarea-input"></textarea>
+                </div>
+
+                <div class="section">
+                    <h3>Archivo</h3>
+                    <div class="file-section">
+                        <button id="selectFile" class="btn btn-secondary">Seleccionar Archivo</button>
+                        <input type="text" id="filePath" placeholder="O ingresa ruta manualmente..." class="text-input">
+                        <button id="loadFromPath" class="btn btn-secondary">Cargar</button>
+                        <div id="fileInfo" class="file-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="messages-container" id="messagesContainer">
+                    <div class="welcome-message">
+                        <h3>Bienvenido a Ollama GUI</h3>
+                        <p>1. Inicia el servicio de Ollama si no está ejecutándose</p>
+                        <p>2. Selecciona un modelo de Ollama</p>
+                        <p>3. Configura el system prompt (opcional)</p>
+                        <p>4. Carga tu archivo JSON</p>
+                        <p>5. Escribe tu consulta abajo</p>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="message-input-container">
+                        <textarea id="messageInput" placeholder="Escribe tu consulta sobre el archivo JSON..." class="message-input"></textarea>
+                        <button id="sendMessage" class="btn btn-primary send-btn">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <p>Procesando...</p>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
